@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>POBS-Card — Calculateur</title>
+<style>
+  :root{
+    --bg:#FBFBFC; --panel:#FFFFFF; --ink:#16202C; --muted:#5B6675;
+    --line:#E3E7ED; --line-strong:#CDD4DD;
+    --brand:#1F5673; --brand-soft:#EAF1F5;
+    --risk:#A23B33; --risk-soft:#F6ECEA;
+    --ok:#2F6E4F; --ok-soft:#EAF2EC;
+    --radius:10px;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--bg);
+    line-height:1.5; -webkit-text-size-adjust:100%;
+    padding:max(16px,env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:980px;margin:0 auto}
+
+  header{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px}
+  h1{font-size:1.45rem;letter-spacing:.01em;margin:0 0 2px}
+  .sub{color:var(--ink);font-size:.95rem;margin:0 0 6px}
+  .ref{color:var(--muted);font-size:.78rem;margin:0;font-family:var(--mono)}
+  .ref a{color:var(--brand);text-decoration:none}
+  .ref a:hover{text-decoration:underline}
+
+  main{display:grid;grid-template-columns:1fr;gap:20px}
+  @media(min-width:760px){main{grid-template-columns:1.05fr .95fr;align-items:start}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  @media(min-width:760px){.result-card{position:sticky;top:16px}}
+
+  .group{margin-bottom:18px}
+  .group:last-child{margin-bottom:0}
+  .group-title{font-size:.74rem;text-transform:uppercase;letter-spacing:.09em;color:var(--brand);
+    font-weight:600;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .field{margin-bottom:12px;flex:1 1 140px}
+  label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px}
+  .unit{color:var(--line-strong);font-weight:400}
+
+  input[type=text],select{
+    width:100%;font:inherit;font-size:.95rem;color:var(--ink);background:var(--panel);
+    border:1px solid var(--line-strong);border-radius:8px;padding:9px 10px;
+  }
+  input[type=text]{font-family:var(--mono)}
+  input:focus,select:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+
+  .check{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--line-strong);
+    border-radius:8px;cursor:pointer;font-size:.92rem}
+  .check input{width:17px;height:17px;accent-color:var(--brand);cursor:pointer}
+
+  .bmi-readout{font-family:var(--mono);font-size:.82rem;color:var(--muted);margin-top:-4px}
+  .bmi-readout b{color:var(--ink)}
+
+  /* Result */
+  .score-line{display:flex;align-items:baseline;gap:8px}
+  .score{font-family:var(--mono);font-size:3.4rem;font-weight:600;line-height:1;letter-spacing:-.02em}
+  .score-max{font-family:var(--mono);font-size:1rem;color:var(--muted)}
+  .verdict{display:inline-block;margin-top:10px;font-size:.85rem;font-weight:600;
+    padding:5px 11px;border-radius:999px;border:1px solid transparent}
+  .v-ok{color:var(--ok);background:var(--ok-soft);border-color:#CFE3D6}
+  .v-risk{color:var(--risk);background:var(--risk-soft);border-color:#EAD3CF}
+  .verdict-note{font-size:.82rem;color:var(--muted);margin-top:8px}
+
+  .proba{margin-top:14px;padding:10px 12px;background:var(--brand-soft);border-radius:8px;font-size:.86rem}
+  .proba b{font-family:var(--mono);font-size:1.05rem;color:var(--brand)}
+  .proba small{display:block;color:var(--muted);font-size:.74rem;margin-top:3px}
+
+  /* threshold track */
+  .track-wrap{margin:20px 0 4px}
+  .track{position:relative;height:12px;border-radius:999px;background:#EEF1F5;border:1px solid var(--line)}
+  .track-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--brand);transition:width .18s ease,background .18s ease}
+  .track-fill.over{background:var(--risk)}
+  .cut{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ink)}
+  .cut::after{content:"seuil 14";position:absolute;top:-17px;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:.66rem;color:var(--ink);white-space:nowrap}
+  .track-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:8px}
+
+  /* breakdown */
+  .bd-title{font-size:.74rem;text-transform:uppercase;letter-spacing:.09em;color:var(--brand);
+    font-weight:600;margin:20px 0 8px}
+  .bd{list-style:none;margin:0;padding:0;font-size:.86rem}
+  .bd li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .bd li:last-child{border-bottom:none}
+  .bd .pts{font-family:var(--mono);font-weight:600;color:var(--ink)}
+  .bd .none{color:var(--muted);font-style:italic;padding:6px 0}
+
+  .actions{margin-top:18px}
+  button.reset{font:inherit;font-size:.85rem;color:var(--brand);background:transparent;
+    border:1px solid var(--line-strong);border-radius:8px;padding:8px 14px;cursor:pointer}
+  button.reset:hover{background:var(--brand-soft)}
+  button.reset:focus{outline:2px solid var(--brand);outline-offset:1px}
+
+  footer{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:.76rem;color:var(--muted)}
+  footer p{margin:0 0 6px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>POBS-Card</h1>
+    <p class="sub">PeriOperative Bleeding Score in Cardiac surgery — prédiction d'un saignement modéré à sévère (UDPB&nbsp;≥2) après chirurgie cardiaque sous CEC</p>
+    <p class="ref">Besnier E, et al. JTCVS Open 2024;19:183–199. — <a href="https://doi.org/10.1016/j.xjon.2024.04.008" target="_blank" rel="noopener">doi:10.1016/j.xjon.2024.04.008</a></p>
+  </header>
+
+  <main>
+    <!-- ENTRÉES -->
+    <section class="card">
+      <div class="group">
+        <p class="group-title">Terrain</p>
+        <div class="row">
+          <div class="field">
+            <label for="poids">Poids <span class="unit">(kg)</span></label>
+            <input type="text" inputmode="decimal" id="poids" placeholder="ex. 78">
+          </div>
+          <div class="field">
+            <label for="taille">Taille <span class="unit">(cm)</span></label>
+            <input type="text" inputmode="decimal" id="taille" placeholder="ex. 172">
+          </div>
+        </div>
+        <p class="bmi-readout" id="bmiReadout">IMC : <b>—</b></p>
+      </div>
+
+      <div class="group">
+        <p class="group-title">Chirurgie</p>
+        <div class="field">
+          <label for="typeChir">Type de chirurgie</label>
+          <select id="typeChir">
+            <option value="coro">Coronaire isolée (référence)</option>
+            <option value="valv">Valvulaire isolée (référence)</option>
+            <option value="combined">Combinée (valve + pontage)</option>
+            <option value="aorta">Aorte ascendante</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="check"><input type="checkbox" id="redo"> Reprise chirurgicale (redo)</label>
+        </div>
+      </div>
+
+      <div class="group">
+        <p class="group-title">Hémostase préopératoire</p>
+        <div class="field">
+          <label for="antiplaq">Traitement antiplaquettaire</label>
+          <select id="antiplaq">
+            <option value="none">Aucun</option>
+            <option value="single">Simple (ex. aspirine)</option>
+            <option value="dual">Double (bi-antiagrégation)</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="hb">Hémoglobine <span class="unit">(g/dL)</span></label>
+            <input type="text" inputmode="decimal" id="hb" placeholder="ex. 14.2">
+          </div>
+          <div class="field">
+            <label for="tca">TCA ratio <span class="unit">(aPTTr)</span></label>
+            <input type="text" inputmode="decimal" id="tca" placeholder="ex. 1.1">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="tp">TP <span class="unit">(%)</span></label>
+            <input type="text" inputmode="decimal" id="tp" placeholder="ex. 85">
+          </div>
+          <div class="field">
+            <label for="plaq">Plaquettes <span class="unit">(G/L)</span></label>
+            <input type="text" inputmode="decimal" id="plaq" placeholder="ex. 220">
+          </div>
+        </div>
+        <div class="field" style="max-width:calc(50% - 6px)">
+          <label for="fibri">Fibrinogène <span class="unit">(g/L)</span></label>
+          <input type="text" inputmode="decimal" id="fibri" placeholder="ex. 3.5">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="reset" id="resetBtn" type="button">Réinitialiser</button>
+      </div>
+    </section>
+
+    <!-- RÉSULTAT -->
+    <section class="card result-card" aria-live="polite">
+      <div class="score-line">
+        <span class="score" id="scoreVal">0</span>
+        <span class="score-max" id="scoreMax">/ 61</span>
+      </div>
+      <span class="verdict v-ok" id="verdict">Score ≤ 14</span>
+      <p class="verdict-note" id="verdictNote">En dessous du seuil de décision.</p>
+
+      <div class="proba">
+        Probabilité estimée de saignement modéré à sévère : <b id="probaVal">—</b>
+        <small>Modèle logistique complet (Table 4) ; performance modeste (r² = 0,05) — estimation indicative.</small>
+      </div>
+
+      <div class="track-wrap">
+        <div class="track">
+          <div class="track-fill" id="trackFill" style="width:0%"></div>
+          <div class="cut" id="cutMark"></div>
+        </div>
+        <div class="track-scale"><span>0</span><span id="scaleMax">61</span></div>
+      </div>
+
+      <p class="bd-title">Facteurs contributifs</p>
+      <ul class="bd" id="breakdown"><li class="none">Aucun facteur renseigné.</li></ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Barème conforme au Table 4 (Besnier 2024). Échelle 0–61 (maximum atteignable). Seuil >14 : spécificité 73 %, sensibilité 50 % ; AUC ≈ 0,64 en validation externe.</p>
+    <p>Outil d'aide à la décision uniquement, à intégrer dans une démarche globale de Patient Blood Management ; ne remplace pas le jugement clinique.</p>
+    <p>Calcul entièrement local — aucune donnée saisie n'est transmise ni enregistrée.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   POBS-Card — barème validé (Table 4, Besnier et al. JTCVS Open 2024)
+   poids = round(5 * beta / beta_ref), beta_ref = fibrinogène = 0.35
+   ============================================================ */
+const POBS = {
+  points: {
+    bmiLow:       5,   // IMC < 25 kg/m²        (beta 0.35)
+    hbLow:        5,   // Hb < 13.5 g/dL        (beta 0.38)
+    redo:         8,   // Reprise chirurgicale  (beta 0.53)
+    surgCombined: 8,   // Chirurgie combinée    (beta 0.58)
+    surgAorta:    6,   // Aorte ascendante      (beta 0.45)
+    apSingle:     6,   // Antiagrégant simple   (beta 0.40)
+    apDual:       9,   // Bi-antiagrégation     (beta 0.64)
+    aptt:         5,   // TCA ratio > 1.2       (beta 0.35)
+    pt:           8,   // TP < 60 %             (beta 0.55)
+    platelets:    8,   // Plaquettes < 150 G/L  (beta 0.56)
+    fibrinogen:   5    // Fibrinogène < 3 g/L   (beta 0.35, référence)
+  },
+  beta: {              // coefficients du modèle logistique (Table 4)
+    bmiLow:0.35, hbLow:0.38, redo:0.53, surgCombined:0.58, surgAorta:0.45,
+    apSingle:0.40, apDual:0.64, aptt:0.35, pt:0.55, platelets:0.56, fibrinogen:0.35
+  },
+  intercept: -3.217,
+  thresholds: { bmi:25, hb:13.5, aptt:1.2, pt:60, platelets:150, fibrinogen:3 },
+  decisionCutoff: 14,
+  maxScore: 61
+};
+
+const $ = id => document.getElementById(id);
+const num = el => {
+  const v = parseFloat((el.value || "").replace(",", ".").trim());
+  return Number.isFinite(v) ? v : null;
+};
+
+const els = {
+  poids:$("poids"), taille:$("taille"), typeChir:$("typeChir"), redo:$("redo"),
+  antiplaq:$("antiplaq"), hb:$("hb"), tca:$("tca"), tp:$("tp"), plaq:$("plaq"), fibri:$("fibri"),
+  bmiReadout:$("bmiReadout"), scoreVal:$("scoreVal"), scoreMax:$("scoreMax"),
+  scaleMax:$("scaleMax"), verdict:$("verdict"), verdictNote:$("verdictNote"),
+  probaVal:$("probaVal"), trackFill:$("trackFill"), cutMark:$("cutMark"), breakdown:$("breakdown")
+};
+
+function compute(){
+  const items = [];        // {label, pts, key}
+  const P = POBS.points, T = POBS.thresholds;
+
+  /* IMC */
+  const poids = num(els.poids), taille = num(els.taille);
+  let bmi = null;
+  if (poids && taille && taille > 0){
+    bmi = poids / Math.pow(taille/100, 2);
+    els.bmiReadout.innerHTML = "IMC : <b>" + bmi.toFixed(1) + " kg/m²</b>";
+  } else {
+    els.bmiReadout.innerHTML = "IMC : <b>—</b>";
+  }
+  if (bmi !== null && bmi < T.bmi) items.push({label:"IMC < 25 kg/m²", pts:P.bmiLow, key:"bmiLow"});
+
+  /* Chirurgie */
+  if (els.typeChir.value === "combined") items.push({label:"Chirurgie combinée", pts:P.surgCombined, key:"surgCombined"});
+  else if (els.typeChir.value === "aorta") items.push({label:"Aorte ascendante", pts:P.surgAorta, key:"surgAorta"});
+  if (els.redo.checked) items.push({label:"Reprise chirurgicale (redo)", pts:P.redo, key:"redo"});
+
+  /* Antiplaquettaires */
+  if (els.antiplaq.value === "single") items.push({label:"Antiagrégant simple", pts:P.apSingle, key:"apSingle"});
+  else if (els.antiplaq.value === "dual") items.push({label:"Bi-antiagrégation", pts:P.apDual, key:"apDual"});
+
+  /* Hémostase */
+  const hb = num(els.hb), tca = num(els.tca), tp = num(els.tp), plaq = num(els.plaq), fibri = num(els.fibri);
+  if (hb    !== null && hb    <  T.hb)         items.push({label:"Hb < 13,5 g/dL", pts:P.hbLow, key:"hbLow"});
+  if (tca   !== null && tca   >  T.aptt)       items.push({label:"TCA ratio > 1,2", pts:P.aptt, key:"aptt"});
+  if (tp    !== null && tp    <  T.pt)         items.push({label:"TP < 60 %", pts:P.pt, key:"pt"});
+  if (plaq  !== null && plaq  <  T.platelets)  items.push({label:"Plaquettes < 150 G/L", pts:P.platelets, key:"platelets"});
+  if (fibri !== null && fibri <  T.fibrinogen) items.push({label:"Fibrinogène < 3 g/L", pts:P.fibrinogen, key:"fibrinogen"});
+
+  const total = items.reduce((s,i)=>s+i.pts, 0);
+
+  /* probabilité logistique : intercept + somme des beta présents */
+  let logit = POBS.intercept;
+  items.forEach(i => { logit += POBS.beta[i.key]; });
+  const prob = 1 / (1 + Math.exp(-logit));
+
+  render(total, items, prob);
+}
+
+function render(total, items, prob){
+  els.scoreVal.textContent = total;
+  els.scoreMax.textContent = "/ " + POBS.maxScore;
+  els.scaleMax.textContent = POBS.maxScore;
+  els.probaVal.textContent = (prob*100).toFixed(1) + " %";
+
+  const over = total > POBS.decisionCutoff;
+  const pct = Math.max(0, Math.min(100, (total / POBS.maxScore) * 100));
+  els.trackFill.style.width = pct + "%";
+  els.trackFill.classList.toggle("over", over);
+  els.cutMark.style.left = (POBS.decisionCutoff / POBS.maxScore * 100) + "%";
+
+  if (over){
+    els.verdict.className = "verdict v-risk";
+    els.verdict.textContent = "Score > 14 — risque accru";
+    els.verdictNote.textContent = "Au-dessus du seuil de décision (spécificité 73 %, sensibilité 50 %).";
+  } else {
+    els.verdict.className = "verdict v-ok";
+    els.verdict.textContent = "Score ≤ 14";
+    els.verdictNote.textContent = "En dessous du seuil de décision.";
+  }
+
+  if (items.length === 0){
+    els.breakdown.innerHTML = '<li class="none">Aucun facteur renseigné.</li>';
+  } else {
+    els.breakdown.innerHTML = items
+      .map(i => '<li><span>'+i.label+'</span><span class="pts">+'+i.pts+'</span></li>')
+      .join("");
+  }
+}
+
+function reset(){
+  ["poids","taille","hb","tca","tp","plaq","fibri"].forEach(k=>els[k].value="");
+  els.typeChir.value="coro"; els.antiplaq.value="none"; els.redo.checked=false;
+  compute();
+}
+
+[els.poids,els.taille,els.hb,els.tca,els.tp,els.plaq,els.fibri].forEach(el=>el.addEventListener("input",compute));
+[els.typeChir,els.antiplaq,els.redo].forEach(el=>el.addEventListener("change",compute));
+$("resetBtn").addEventListener("click",reset);
+
+compute();
+</script>
+</body>
+</html>
